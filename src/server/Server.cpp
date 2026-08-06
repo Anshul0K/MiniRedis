@@ -7,6 +7,9 @@
 #include <arpa/inet.h>
 #include <cstring>
 
+#include "parser/CommandParser.h"
+#include "executor/CommandExecutor.h"
+
 Server::Server()
     : serverSocket(-1)
 {
@@ -40,7 +43,6 @@ void Server::start()
         close(serverSocket);
         return;
     }
-
     std::cout << "Bind successful" << std::endl;
 
     // Listen
@@ -65,6 +67,9 @@ void Server::start()
 
     std::cout << "Client connected!" << std::endl;
 
+    CommandParser parser;
+    CommandExecutor executor;
+
     char buffer[1024];
 
     while (true)
@@ -79,7 +84,20 @@ void Server::start()
             break;
         }
 
-        std::cout << "Received: " << buffer << std::endl;
+        std::string command(buffer);
+
+        auto tokens = parser.parse(command);
+
+        std::string response = executor.execute(tokens);
+
+        if (send(clientSocket,
+                 response.c_str(),
+                 response.size(),
+                 0) == -1)
+        {
+            std::cout << "Failed to send response" << std::endl;
+            break;
+        }
     }
 
     close(clientSocket);
