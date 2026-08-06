@@ -32,3 +32,8 @@ std::string CommandExecutor::execute(const std::vector<std::string>& tokens)
 
     return "ERROR: Unknown command\n";
 }
+
+CommandExecutor::CommandExecutor(Database& database)
+    : database(database)
+{
+}

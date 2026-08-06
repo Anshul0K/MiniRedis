@@ -2,17 +2,17 @@
 #include <iostream>
 #include <string>
 #include <unordered_map>
+#include <shared_mutex>
 
-using namespace std;
 
-
-class Database{
+class Database
+{
 public:
-    void set(const string& key, const string& value);
-    string get(const string& key);
-    bool del(const string& key);
+    void set(const std::string& key, const std::string& value);
+    std::string get(const std::string& key);
+    bool del(const std::string& key);
 
 private:
-    unordered_map<string, string> data;
-
+    std::unordered_map<std::string, std::string> data;
+    mutable std::shared_mutex mutex;
 };

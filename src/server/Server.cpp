@@ -6,6 +6,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <cstring>
+#include <thread>
 
 #include "parser/CommandParser.h"
 #include "executor/CommandExecutor.h"
@@ -15,60 +16,10 @@ Server::Server()
 {
 }
 
-void Server::start()
+void Server::handleClient(int clientSocket)
 {
-    std::cout << "MiniRedis Server Starting..." << std::endl;
-
-    // Create socket
-    serverSocket = socket(AF_INET, SOCK_STREAM, 0);
-    if (serverSocket == -1)
-    {
-        std::cout << "Failed to create socket" << std::endl;
-        return;
-    }
-    std::cout << "Socket created successfully" << std::endl;
-
-    // Configure address
-    memset(&serverAddress, 0, sizeof(serverAddress));
-    serverAddress.sin_family = AF_INET;
-    serverAddress.sin_addr.s_addr = INADDR_ANY;
-    serverAddress.sin_port = htons(6379);
-
-    // Bind
-    if (::bind(serverSocket,
-               reinterpret_cast<sockaddr*>(&serverAddress),
-               sizeof(serverAddress)) == -1)
-    {
-        std::cout << "Bind failed" << std::endl;
-        close(serverSocket);
-        return;
-    }
-    std::cout << "Bind successful" << std::endl;
-
-    // Listen
-    if (listen(serverSocket, 5) == -1)
-    {
-        std::cout << "Listen failed" << std::endl;
-        close(serverSocket);
-        return;
-    }
-
-    std::cout << "Listening on port 6379..." << std::endl;
-    std::cout << "Waiting for client..." << std::endl;
-
-    int clientSocket = accept(serverSocket, nullptr, nullptr);
-
-    if (clientSocket == -1)
-    {
-        std::cout << "Accept failed" << std::endl;
-        close(serverSocket);
-        return;
-    }
-
-    std::cout << "Client connected!" << std::endl;
-
     CommandParser parser;
-    CommandExecutor executor;
+    CommandExecutor executor(database);
 
     char buffer[1024];
 
@@ -101,5 +52,64 @@ void Server::start()
     }
 
     close(clientSocket);
+}
+
+void Server::start()
+{
+    std::cout << "MiniRedis Server Starting..." << std::endl;
+
+    serverSocket = socket(AF_INET, SOCK_STREAM, 0);
+
+    if (serverSocket == -1)
+    {
+        std::cout << "Failed to create socket" << std::endl;
+        return;
+    }
+
+    std::cout << "Socket created successfully" << std::endl;
+
+    memset(&serverAddress, 0, sizeof(serverAddress));
+
+    serverAddress.sin_family = AF_INET;
+    serverAddress.sin_addr.s_addr = INADDR_ANY;
+    serverAddress.sin_port = htons(6379);
+
+    if (::bind(serverSocket,
+               reinterpret_cast<sockaddr*>(&serverAddress),
+               sizeof(serverAddress)) == -1)
+    {
+        std::cout << "Bind failed" << std::endl;
+        close(serverSocket);
+        return;
+    }
+
+    std::cout << "Bind successful" << std::endl;
+
+    if (listen(serverSocket, 5) == -1)
+    {
+        std::cout << "Listen failed" << std::endl;
+        close(serverSocket);
+        return;
+    }
+
+    std::cout << "Listening on port 6379..." << std::endl;
+
+    while (true)
+    {
+        std::cout << "Waiting for client..." << std::endl;
+
+        int clientSocket = accept(serverSocket, nullptr, nullptr);
+
+        if (clientSocket == -1)
+        {
+            std::cout << "Accept failed" << std::endl;
+            continue;
+        }
+
+        std::cout << "Client connected!" << std::endl;
+
+        std::thread(&Server::handleClient, this, clientSocket).detach();
+    }
+
     close(serverSocket);
 }
