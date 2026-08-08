@@ -5,6 +5,7 @@
 #include <sstream>
 #include <cstdio>
 #include <mutex>
+#include <iostream>
 
 AOFManager::AOFManager()
     : aofPath("data/appendonly.aof"),

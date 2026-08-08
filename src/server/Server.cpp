@@ -7,13 +7,16 @@
 #include <arpa/inet.h>
 #include <cstring>
 #include <thread>
+#include <chrono>
+#include <atomic>
 
 #include "parser/CommandParser.h"
 #include "executor/CommandExecutor.h"
 #include "persistence/AOFManager.h"
 
 Server::Server()
-    : serverSocket(-1)
+    : serverSocket(-1),
+      running(true)
 {
 }
 
@@ -57,6 +60,9 @@ void Server::handleClient(int clientSocket)
 void Server::start()
 {
     std::cout << "MiniRedis Server Starting..." << std::endl;
+    aofManager.load(database);
+
+    snapshotThread = std::thread(&Server::snapshotLoop, this);
 
     serverSocket = socket(AF_INET, SOCK_STREAM, 0);
 
@@ -112,4 +118,18 @@ void Server::start()
     }
 
     close(serverSocket);
+}
+
+void Server::snapshotLoop()
+{
+    while (running)
+    {
+        std::this_thread::sleep_for(std::chrono::seconds(300));
+
+        if (running)
+        {
+            aofManager.createSnapshot(database);
+            std::cout << "Automatic snapshot created" << std::endl;
+        }
+    }
 }
