@@ -22,3 +22,10 @@ bool Database::del(const string& key){
     std::unique_lock lock(mutex);
     return data.erase(key);
 }
+
+std::unordered_map<std::string, std::string> Database::getAll()
+{
+    std::shared_lock lock(mutex);
+
+    return data;
+}
