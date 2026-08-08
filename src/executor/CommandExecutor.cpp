@@ -1,5 +1,7 @@
 #include "executor/CommandExecutor.h"
 
+#include <cstdlib>
+
 CommandExecutor::CommandExecutor(Database& database, AOFManager& aofManager)
     : database(database), aofManager(aofManager)
 {
@@ -12,14 +14,33 @@ std::string CommandExecutor::execute(const std::vector<std::string>& tokens)
 
     if (tokens[0] == "SET")
     {
-        if (tokens.size() != 3)
-            return "ERROR: Usage SET <key> <value>\n";
+        if (tokens.size() == 3)
+        {
+            database.set(tokens[1], tokens[2]);
 
-        database.set(tokens[1], tokens[2]);
+            aofManager.append("SET " + tokens[1] + " " + tokens[2]);
 
-        aofManager.append("SET " + tokens[1] + " " + tokens[2]);
+            return "OK\n";
+        }
 
-        return "OK\n";
+        if (tokens.size() == 5 && tokens[3] == "EX")
+        {
+            long long ttl = std::stoll(tokens[4]);
+
+            if (ttl <= 0)
+                return "ERROR: Invalid TTL\n";
+
+            database.set(tokens[1], tokens[2], ttl);
+
+            aofManager.append(
+                "SET " + tokens[1] + " " + tokens[2] +
+                " EX " + tokens[4]
+            );
+
+            return "OK\n";
+        }
+
+        return "ERROR: Usage SET <key> <value> [EX <seconds>]\n";
     }
 
     if (tokens[0] == "GET")
@@ -28,6 +49,14 @@ std::string CommandExecutor::execute(const std::vector<std::string>& tokens)
             return "ERROR: Usage GET <key>\n";
 
         return database.get(tokens[1]) + "\n";
+    }
+
+    if (tokens[0] == "TTL")
+    {
+        if (tokens.size() != 2)
+            return "ERROR: Usage TTL <key>\n";
+
+        return std::to_string(database.ttl(tokens[1])) + "\n";
     }
 
     if (tokens[0] == "DEL")

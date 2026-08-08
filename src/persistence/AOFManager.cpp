@@ -6,6 +6,7 @@
 #include <cstdio>
 #include <mutex>
 #include <iostream>
+#include <chrono>
 
 AOFManager::AOFManager()
     : aofPath("data/appendonly.aof"),
@@ -34,11 +35,16 @@ void AOFManager::createSnapshot(Database& database)
     if (!file.is_open())
         return;
 
-    auto data = database.getAll();
+    auto data = database.getSnapshotData();
 
-    for (const auto& [key, value] : data)
+    for (const auto& [key, entry] : data)
     {
-        file << key << '\t' << value << '\n';
+        const auto& value = entry.first;
+        long long expiration = entry.second;
+
+        file << key << '\t'
+             << value << '\t'
+             << expiration << '\n';
     }
 
     file.close();
@@ -55,15 +61,43 @@ void AOFManager::load(Database& database)
 
     if (snapshot.is_open())
     {
-        std::string key;
-        std::string value;
+        std::string line;
 
-        while (std::getline(snapshot, key, '\t') &&
-               std::getline(snapshot, value))
+        while (std::getline(snapshot, line))
         {
-            database.set(key, value);
+            std::stringstream ss(line);
+
+            std::string key;
+            std::string value;
+            long long expiration;
+
+            std::getline(ss, key, '\t');
+            std::getline(ss, value, '\t');
+            ss >> expiration;
+
+            if (expiration == -1)
+            {
+                database.set(key, value);
+                continue;
+            }
+
+            auto now = std::chrono::system_clock::now();
+
+            auto currentTime =
+                std::chrono::duration_cast<std::chrono::seconds>(
+                    now.time_since_epoch()
+                ).count();
+
+            long long remainingTTL = expiration - currentTime;
+
+            if (remainingTTL > 0)
+            {
+                database.set(key, value, remainingTTL);
+            }
         }
     }
+
+    snapshot.close();
 
     snapshot.close();
 
@@ -81,13 +115,24 @@ void AOFManager::load(Database& database)
         std::string operation;
         std::string key;
         std::string value;
+        std::string option;
+        long long ttl;
 
         ss >> operation >> key;
 
         if (operation == "SET")
         {
             ss >> value;
-            database.set(key, value);
+
+            if (ss >> option >> ttl)
+            {
+                if (option == "EX" && ttl > 0)
+                    database.set(key, value, ttl);
+            }
+            else
+            {
+                database.set(key, value);
+            }
         }
         else if (operation == "DEL")
         {
