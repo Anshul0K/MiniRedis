@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <mutex>
 
 class Database;
 
@@ -18,4 +19,5 @@ public:
 private:
     std::string aofPath;
     std::string snapshotPath;
+    std::mutex mutex;
 };

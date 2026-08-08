@@ -10,6 +10,7 @@
 
 #include "parser/CommandParser.h"
 #include "executor/CommandExecutor.h"
+#include "persistence/AOFManager.h"
 
 Server::Server()
     : serverSocket(-1)
@@ -19,7 +20,7 @@ Server::Server()
 void Server::handleClient(int clientSocket)
 {
     CommandParser parser;
-    CommandExecutor executor(database);
+    CommandExecutor executor(database, aofManager);
 
     char buffer[1024];
 
@@ -43,8 +44,7 @@ void Server::handleClient(int clientSocket)
 
         if (send(clientSocket,
                  response.c_str(),
-                 response.size(),
-                 0) == -1)
+                 response.size(), 0) == -1)
         {
             std::cout << "Failed to send response" << std::endl;
             break;

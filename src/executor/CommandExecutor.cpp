@@ -1,5 +1,10 @@
 #include "executor/CommandExecutor.h"
 
+CommandExecutor::CommandExecutor(Database& database, AOFManager& aofManager)
+    : database(database), aofManager(aofManager)
+{
+}
+
 std::string CommandExecutor::execute(const std::vector<std::string>& tokens)
 {
     if (tokens.empty())
@@ -11,6 +16,9 @@ std::string CommandExecutor::execute(const std::vector<std::string>& tokens)
             return "ERROR: Usage SET <key> <value>\n";
 
         database.set(tokens[1], tokens[2]);
+
+        aofManager.append("SET " + tokens[1] + " " + tokens[2]);
+
         return "OK\n";
     }
 
@@ -27,13 +35,25 @@ std::string CommandExecutor::execute(const std::vector<std::string>& tokens)
         if (tokens.size() != 2)
             return "ERROR: Usage DEL <key>\n";
 
-        return database.del(tokens[1]) ? "OK\n" : "(nil)\n";
+        bool deleted = database.del(tokens[1]);
+
+        if (deleted)
+        {
+            aofManager.append("DEL " + tokens[1]);
+            return "OK\n";
+        }
+
+        return "(nil)\n";
+    }
+
+    if (tokens[0] == "SNAPSHOT")
+    {
+        if (tokens.size() != 1)
+            return "ERROR: Usage SNAPSHOT\n";
+
+        aofManager.createSnapshot(database);
+        return "OK\n";
     }
 
     return "ERROR: Unknown command\n";
-}
-
-CommandExecutor::CommandExecutor(Database& database)
-    : database(database)
-{
 }

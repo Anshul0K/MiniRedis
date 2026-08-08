@@ -4,6 +4,7 @@
 #include <fstream>
 #include <sstream>
 #include <cstdio>
+#include <mutex>
 
 AOFManager::AOFManager()
     : aofPath("data/appendonly.aof"),
@@ -13,6 +14,8 @@ AOFManager::AOFManager()
 
 void AOFManager::append(const std::string& command)
 {
+    std::lock_guard<std::mutex> lock(mutex);
+
     std::ofstream file(aofPath, std::ios::app);
 
     if (!file.is_open())

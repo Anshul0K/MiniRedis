@@ -15,4 +15,5 @@ private:
     int serverSocket;
     Database database;
     sockaddr_in serverAddress;
+    AOFManager aofManager;
 };
