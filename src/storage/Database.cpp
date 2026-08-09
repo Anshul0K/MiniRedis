@@ -3,12 +3,20 @@
 #include <chrono>
 #include <mutex>
 
+Database::Database(size_t maxKeys)
+    : maxKeys(maxKeys)
+{
+}
+
 void Database::set(const std::string& key, const std::string& value)
 {
     std::unique_lock lock(mutex);
 
     data[key] = value;
     expiry.erase(key);
+
+    touchKey(key);
+    evictIfNeeded();
 }
 
 void Database::set(const std::string& key, const std::string& value, long long ttl)
@@ -23,6 +31,9 @@ void Database::set(const std::string& key, const std::string& value, long long t
     ).count();
 
     expiry[key] = timestamp + ttl;
+
+    touchKey(key);
+    evictIfNeeded();
 }
 
 std::string Database::get(const std::string& key)
@@ -47,10 +58,12 @@ std::string Database::get(const std::string& key)
         {
             data.erase(it);
             expiry.erase(exp);
+            removeFromLRU(key);
             return "(nil)";
         }
     }
 
+    touchKey(key);
     return it->second;
 }
 
@@ -58,8 +71,16 @@ bool Database::del(const std::string& key)
 {
     std::unique_lock lock(mutex);
 
+    auto it = data.find(key);
+
+    if (it == data.end())
+        return false;
+
+    data.erase(it);
     expiry.erase(key);
-    return data.erase(key);
+    removeFromLRU(key);
+
+    return true;
 }
 
 long long Database::ttl(const std::string& key)
@@ -154,4 +175,42 @@ std::unordered_map<std::string, std::pair<std::string, long long>> Database::get
     }
 
     return result;
+}
+
+void Database::touchKey(const std::string& key)
+{
+    auto it = lruMap.find(key);
+
+    if (it != lruMap.end())
+    {
+        lruList.erase(it->second);
+    }
+
+    lruList.push_back(key);
+    lruMap[key] = std::prev(lruList.end());
+}
+
+void Database::removeFromLRU(const std::string& key)
+{
+    auto it = lruMap.find(key);
+
+    if (it == lruMap.end())
+        return;
+
+    lruList.erase(it->second);
+    lruMap.erase(it);
+}
+
+void Database::evictIfNeeded()
+{
+    while (data.size() > maxKeys)
+    {
+        std::string key = lruList.front();
+
+        data.erase(key);
+        expiry.erase(key);
+
+        lruMap.erase(key);
+        lruList.pop_front();
+    }
 }

@@ -6,4 +6,5 @@ build/
 *.exe
 *.a
 *.so
-*.dylib
+*.dylibdata/
+data/
