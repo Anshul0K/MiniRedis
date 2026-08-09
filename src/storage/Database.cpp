@@ -56,9 +56,7 @@ std::string Database::get(const std::string& key)
 
         if (timestamp >= exp->second)
         {
-            data.erase(it);
-            expiry.erase(exp);
-            removeFromLRU(key);
+            removeKey(key);
             return "(nil)";
         }
     }
@@ -76,9 +74,7 @@ bool Database::del(const std::string& key)
     if (it == data.end())
         return false;
 
-    data.erase(it);
-    expiry.erase(key);
-    removeFromLRU(key);
+    removeKey(key);
 
     return true;
 }
@@ -129,8 +125,10 @@ std::unordered_map<std::string, std::string> Database::getAll()
 
             if (timestamp >= exp->second)
             {
-                expiry.erase(exp);
-                it = data.erase(it);
+                std::string key = it->first;
+                ++it;
+
+                removeKey(key);
                 continue;
             }
         }
@@ -159,8 +157,10 @@ std::unordered_map<std::string, std::pair<std::string, long long>> Database::get
 
         if (exp != expiry.end() && timestamp >= exp->second)
         {
-            expiry.erase(exp);
-            it = data.erase(it);
+            std::string key = it->first;
+            ++it;
+
+            removeKey(key);
             continue;
         }
 
@@ -207,10 +207,13 @@ void Database::evictIfNeeded()
     {
         std::string key = lruList.front();
 
-        data.erase(key);
-        expiry.erase(key);
-
-        lruMap.erase(key);
-        lruList.pop_front();
+        removeKey(key);
     }
+}
+
+void Database::removeKey(const std::string& key)
+{
+    data.erase(key);
+    expiry.erase(key);
+    removeFromLRU(key);
 }

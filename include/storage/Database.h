@@ -35,6 +35,8 @@ private:
     void touchKey(const std::string& key);
     void removeFromLRU(const std::string& key);
     void evictIfNeeded();
-    
+    void removeKey(const std::string& key);
+
     mutable std::shared_mutex mutex;
 };
+
