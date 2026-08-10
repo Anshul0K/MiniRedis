@@ -10,9 +10,10 @@
 #include <chrono>
 #include <atomic>
 
-#include "parser/CommandParser.h"
 #include "executor/CommandExecutor.h"
 #include "persistence/AOFManager.h"
+#include "protocol/RESPParser.h"
+#include "protocol/RESPEncoder.h"
 
 Server::Server()
     : serverSocket(-1),
@@ -22,35 +23,118 @@ Server::Server()
 
 void Server::handleClient(int clientSocket)
 {
-    CommandParser parser;
+    RESPParser parser;
     CommandExecutor executor(database, aofManager);
 
-    char buffer[1024];
+    char buffer[4096];
+    std::string inputBuffer;
 
     while (true)
     {
-        memset(buffer, 0, sizeof(buffer));
-
-        int bytesReceived = recv(clientSocket, buffer, sizeof(buffer) - 1, 0);
+        int bytesReceived = recv(
+            clientSocket,
+            buffer,
+            sizeof(buffer),
+            0
+        );
 
         if (bytesReceived <= 0)
         {
-            std::cout << "Client disconnected" << std::endl;
+            std::cout << "Client disconnected"
+                      << std::endl;
             break;
         }
 
-        std::string command(buffer);
+        // Add received bytes to persistent buffer
+        inputBuffer.append(buffer, bytesReceived);
 
-        auto tokens = parser.parse(command);
-
-        std::string response = executor.execute(tokens);
-
-        if (send(clientSocket,
-                 response.c_str(),
-                 response.size(), 0) == -1)
+        // One recv() can contain multiple commands
+        while (true)
         {
-            std::cout << "Failed to send response" << std::endl;
-            break;
+            std::vector<std::string> tokens;
+
+            ParseResult result =
+                parser.tryParse(
+                    inputBuffer,
+                    tokens
+                );
+
+            // Command is incomplete.
+            // Wait for the next recv().
+            if (result == ParseResult::INCOMPLETE)
+                break;
+
+            // Invalid RESP sent by client.
+            if (result == ParseResult::ERROR)
+            {
+                std::string response =
+                    RESPEncoder::encodeError(
+                        "Protocol error"
+                    );
+
+                send(
+                    clientSocket,
+                    response.c_str(),
+                    response.size(),
+                    0
+                );
+
+                close(clientSocket);
+                return;
+            }
+
+            // Complete command
+            if (tokens.empty())
+                continue;
+
+            CommandResponse commandResponse =
+                executor.execute(tokens);
+
+            std::string response;
+
+            switch (commandResponse.type)
+            {
+                case ResponseType::SIMPLE_STRING:
+                    response =
+                        RESPEncoder::encodeSimpleString(
+                            commandResponse.value
+                        );
+                    break;
+
+                case ResponseType::BULK_STRING:
+                    response =
+                        RESPEncoder::encodeBulkString(
+                            commandResponse.value
+                        );
+                    break;
+
+                case ResponseType::NULL_VALUE:
+                    response =
+                        RESPEncoder::encodeNull();
+                    break;
+
+                case ResponseType::ERROR:
+                    response =
+                        RESPEncoder::encodeError(
+                            commandResponse.value
+                        );
+                    break;
+            }
+
+            if (send(
+                    clientSocket,
+                    response.c_str(),
+                    response.size(),
+                    0
+                ) == -1)
+            {
+                std::cout
+                    << "Failed to send response"
+                    << std::endl;
+
+                close(clientSocket);
+                return;
+            }
         }
     }
 
