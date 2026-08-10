@@ -154,8 +154,34 @@ CommandResponse CommandExecutor::execute(
         };
     }
 
+
+    // -------------------------
+    // TTL
+    // -------------------------
+
+
+    if (tokens[0] == "TTL")
+    {
+        if (tokens.size() != 2)
+        {
+            return {
+                ResponseType::ERROR,
+                "Usage: TTL <key>"
+            };
+        }
+
+        long long remaining = database.ttl(tokens[1]);
+
+        return {
+            ResponseType::BULK_STRING,
+            std::to_string(remaining)
+        };
+    }
+
     return {
         ResponseType::ERROR,
         "Unknown command"
     };
+
+    
 }

@@ -98,8 +98,7 @@ long long Database::ttl(const std::string& key)
 
     if (timestamp >= exp->second)
     {
-        data.erase(key);
-        expiry.erase(exp);
+        removeKey(key);
         return -2;
     }
 
