@@ -99,7 +99,6 @@ void AOFManager::load(Database& database)
 
     snapshot.close();
 
-    snapshot.close();
 
     std::ifstream aof(aofPath);
 
