@@ -25,23 +25,68 @@ CommandResponse CommandExecutor::execute(
 
     if (tokens[0] == "SET")
     {
-        if (tokens.size() != 3)
+    // SET <key> <value>
+        if (tokens.size() == 3)
         {
+            database.set(tokens[1], tokens[2]);
+
+            aofManager.append(
+                "SET " + tokens[1] + " " + tokens[2]
+            );
+
             return {
-                ResponseType::ERROR,
-                "Usage: SET <key> <value>"
+                ResponseType::SIMPLE_STRING,
+                "OK"
             };
         }
 
-        database.set(tokens[1], tokens[2]);
+        // SET <key> <value> EX <seconds>
+        if (tokens.size() == 5)
+        {
+            if (tokens[3] != "EX")
+            {
+                return {
+                    ResponseType::ERROR,
+                    "Syntax error"
+                };
+            }
 
-        aofManager.append(
-            "SET " + tokens[1] + " " + tokens[2]
-        );
+            try
+            {
+                long long ttl = std::stoll(tokens[4]);
+
+                if (ttl <= 0)
+                {
+                    return {
+                        ResponseType::ERROR,
+                        "Invalid TTL"
+                    };
+                }
+
+                database.set(tokens[1], tokens[2], ttl);
+
+                aofManager.append(
+                    "SET " + tokens[1] + " " + tokens[2] +
+                    " EX " + tokens[4]
+                );
+
+                return {
+                    ResponseType::SIMPLE_STRING,
+                    "OK"
+                };
+            }
+            catch (...)
+            {
+                return {
+                    ResponseType::ERROR,
+                    "Invalid TTL"
+                };
+            }
+        }
 
         return {
-            ResponseType::SIMPLE_STRING,
-            "OK"
+            ResponseType::ERROR,
+            "Usage: SET <key> <value> [EX <seconds>]"
         };
     }
 
