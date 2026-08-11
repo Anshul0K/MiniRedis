@@ -1,32 +1,20 @@
 #include "router/RouterServer.h"
-
+#include "config/Config.h"
 #include <iostream>
-#include <vector>
 
-int main(int argc, char* argv[])
+int main()
 {
-    if (argc != 2)
-    {
-        std::cout
-            << "Usage: "
-            << argv[0]
-            << " <router-port>"
-            << std::endl;
+    Config& config = Config::getInstance();
 
+    if (!config.load(".env"))
+    {
+        std::cout << "Failed to load .env" << std::endl;
         return 1;
     }
 
-    int routerPort = std::stoi(argv[1]);
-
-    std::vector<int> nodePorts = {
-        6379,
-        6380,
-        6381
-    };
-
     RouterServer router(
-        routerPort,
-        nodePorts
+        config.routerPort,
+        config.shardPorts
     );
 
     router.start();

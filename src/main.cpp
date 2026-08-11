@@ -1,12 +1,11 @@
 #include "server/Server.h"
-
 #include <iostream>
 
 int main(int argc, char* argv[])
 {
     if (argc != 2)
     {
-        std::cout << "Usage: ./MiniRedis <port>" << std::endl;
+        std::cout << "Usage: " << argv[0] << " <port>" << std::endl;
         return 1;
     }
 

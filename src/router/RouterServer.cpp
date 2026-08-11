@@ -2,6 +2,10 @@
 #include "protocol/RESPParser.h"
 #include "protocol/RESPEncoder.h"
 
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <signal.h>
+#include <cerrno>
 #include <string>
 #include <iostream>
 #include <sys/socket.h>
@@ -19,12 +23,67 @@ RouterServer::RouterServer(
     : serverSocket(-1),
       port(port),
       running(true),
+      nodePorts(nodePorts),
       shardRouter(nodePorts)
 {
 }
 
+void RouterServer::startShardNodes()
+{
+    std::cout << "Starting shard nodes..." << std::endl;
+
+    for (int nodePort : nodePorts)
+    {
+        pid_t pid = fork();
+
+        if (pid < 0)
+        {
+            std::cout
+                << "Failed to fork shard on port "
+                << nodePort
+                << std::endl;
+
+            continue;
+        }
+
+        // Child process
+        if (pid == 0)
+        {
+            std::string portString =
+                std::to_string(nodePort);
+
+            execl(
+                "./build/MiniRedis",
+                "MiniRedis",
+                portString.c_str(),
+                static_cast<char*>(nullptr)
+            );
+
+            // Only reached if execl fails
+            std::cerr
+                << "Failed to start MiniRedis on port "
+                << nodePort
+                << std::endl;
+
+            _exit(1);
+        }
+
+        // Parent process
+        std::cout
+            << "Started shard on port "
+            << nodePort
+            << " (PID "
+            << pid
+            << ")"
+            << std::endl;
+    }
+}
+
 void RouterServer::start()
 {
+    startShardNodes();
+
+    
     serverSocket = socket(
         AF_INET,
         SOCK_STREAM,
