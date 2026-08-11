@@ -18,10 +18,12 @@
 
 RouterServer::RouterServer(
     int port,
-    const std::vector<int>& nodePorts
+    const std::vector<int>& nodePorts,
+    int snapshotInterval
 )
     : serverSocket(-1),
       port(port),
+      snapshotInterval(snapshotInterval),
       running(true),
       nodePorts(nodePorts),
       shardRouter(nodePorts)
@@ -52,10 +54,14 @@ void RouterServer::startShardNodes()
             std::string portString =
                 std::to_string(nodePort);
 
+            std::string snapshotString =
+                std::to_string(snapshotInterval);
+
             execl(
                 "./build/MiniRedis",
                 "MiniRedis",
                 portString.c_str(),
+                snapshotString.c_str(),
                 static_cast<char*>(nullptr)
             );
 

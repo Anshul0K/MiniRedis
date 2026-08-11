@@ -15,10 +15,11 @@
 #include "protocol/RESPParser.h"
 #include "protocol/RESPEncoder.h"
 
-Server::Server(int port)
+Server::Server(int port, int snapshotInterval)
     : serverSocket(-1),
       running(true),
       port(port),
+      snapshotInterval(snapshotInterval),
       aofManager(port)
 {
 }
@@ -210,7 +211,7 @@ void Server::snapshotLoop()
 {
     while (running)
     {
-        std::this_thread::sleep_for(std::chrono::seconds(300));
+        std::this_thread::sleep_for(std::chrono::seconds(snapshotInterval));
 
         if (running)
         {

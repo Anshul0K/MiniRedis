@@ -14,7 +14,8 @@ int main()
 
     RouterServer router(
         config.routerPort,
-        config.shardPorts
+        config.shardPorts,
+        config.snapshotInterval
     );
 
     router.start();

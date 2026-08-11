@@ -9,7 +9,7 @@
 class Server
 {
 public:
-    explicit Server(int port);
+    Server(int port, int snapshotInterval);
     void start();
 
 private:
@@ -21,7 +21,8 @@ private:
 
     int serverSocket;
     int port;
-
+    int snapshotInterval;
+    
     Database database;
     sockaddr_in serverAddress;
     AOFManager aofManager;
