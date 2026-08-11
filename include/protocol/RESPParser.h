@@ -17,4 +17,9 @@ public:
         std::string& buffer,
         std::vector<std::string>& tokens
     );
+
+    size_t lastParsedBytes() const;
+
+private:
+    size_t lastParsedSize = 0;
 };

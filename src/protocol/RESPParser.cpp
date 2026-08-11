@@ -107,7 +107,16 @@ ParseResult RESPParser::tryParse(
     // -----------------------------
 
     // Remove only the command we consumed.
+    // Remember how many bytes this command used.
+    lastParsedSize = pos;
+
+    // Remove only the command we consumed.
     buffer.erase(0, pos);
 
     return ParseResult::COMPLETE;
+}
+
+size_t RESPParser::lastParsedBytes() const
+{
+    return lastParsedSize;
 }
