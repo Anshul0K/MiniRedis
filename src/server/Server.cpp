@@ -15,9 +15,11 @@
 #include "protocol/RESPParser.h"
 #include "protocol/RESPEncoder.h"
 
-Server::Server()
+Server::Server(int port)
     : serverSocket(-1),
-      running(true)
+      running(true),
+      port(port),
+      aofManager(port)
 {
 }
 
@@ -162,7 +164,7 @@ void Server::start()
 
     serverAddress.sin_family = AF_INET;
     serverAddress.sin_addr.s_addr = INADDR_ANY;
-    serverAddress.sin_port = htons(6379);
+    serverAddress.sin_port = htons(port);
 
     if (::bind(serverSocket,
                reinterpret_cast<sockaddr*>(&serverAddress),
@@ -182,7 +184,7 @@ void Server::start()
         return;
     }
 
-    std::cout << "Listening on port 6379..." << std::endl;
+    std::cout << "Listening on port "<< port<< "..."<< std::endl;
 
     while (true)
     {

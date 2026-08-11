@@ -3,15 +3,19 @@
 
 #include <fstream>
 #include <sstream>
+#include <string>
 #include <cstdio>
 #include <mutex>
 #include <iostream>
 #include <chrono>
 
-AOFManager::AOFManager()
-    : aofPath("data/appendonly.aof"),
-      snapshotPath("data/snapshot.rdb")
+AOFManager::AOFManager(int port)
+    : aofPath("data/node" + std::to_string(port) + "/appendonly.aof"),
+      snapshotPath("data/node" + std::to_string(port) + "/snapshot.rdb")
 {
+    std::filesystem::create_directories(
+        "data/node" + std::to_string(port)
+    );
 }
 
 void AOFManager::append(const std::string& command)

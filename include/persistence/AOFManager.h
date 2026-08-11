@@ -8,7 +8,7 @@ class Database;
 class AOFManager
 {
 public:
-    AOFManager();
+    explicit AOFManager(int port);
 
     void append(const std::string& command);
 

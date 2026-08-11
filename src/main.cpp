@@ -1,8 +1,18 @@
 #include "server/Server.h"
 
-int main()
+#include <iostream>
+
+int main(int argc, char* argv[])
 {
-    Server server;
+    if (argc != 2)
+    {
+        std::cout << "Usage: ./MiniRedis <port>" << std::endl;
+        return 1;
+    }
+
+    int port = std::stoi(argv[1]);
+
+    Server server(port);
     server.start();
 
     return 0;

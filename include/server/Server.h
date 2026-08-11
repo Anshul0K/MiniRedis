@@ -9,7 +9,7 @@
 class Server
 {
 public:
-    Server();
+    explicit Server(int port);
     void start();
 
 private:
@@ -20,6 +20,8 @@ private:
     std::thread snapshotThread;
 
     int serverSocket;
+    int port;
+
     Database database;
     sockaddr_in serverAddress;
     AOFManager aofManager;
