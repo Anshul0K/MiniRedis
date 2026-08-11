@@ -202,7 +202,19 @@ When `GET` or `TTL` is invoked, the database checks whether the current timestam
 
 ---
 
-### 6. LRU Eviction
+### 6. Thread Safety & Synchronization
+The database is accessed by multiple client threads concurrently, so shared data structures are protected using a std::shared_mutex.
+
+- Database operations acquire a lock before accessing shared data.
+- Write operations such as SET, DEL, and key eviction use exclusive locking.
+- Read-related operations use synchronization to prevent concurrent access from causing data races.
+- LRU lists, key-value data, and TTL information are updated while holding the appropriate lock.
+
+This ensures that multiple clients can safely interact with the same MiniRedis instance without corrupting the in-memory database state.
+
+---
+
+### 7. LRU Eviction
 To keep memory usage within boundaries, each shard enforces a max key threshold defined by `MAX_KEYS`.
 
 The database tracks access sequence using an LRU structure:
@@ -219,7 +231,7 @@ If `data.size() > maxKeys`, the least recently used key (at the front of `lruLis
 
 ---
 
-### 7. AOF Persistence
+### 8. AOF Persistence
 MiniRedis provides durability via an **Append-Only File (AOF)** mechanism managed by `AOFManager`. All write operations are logged to disk and replayed during server startup to reconstruct the database state.
 
 **Implementation files:**
@@ -228,12 +240,12 @@ MiniRedis provides durability via an **Append-Only File (AOF)** mechanism manage
 
 ---
 
-### 8. Snapshots
+### 9. Snapshots
 In addition to AOF, background snapshots run via `snapshotLoop()`. Periodically (e.g., `SNAPSHOT_INTERVAL=300`), a background thread dumps the entire state to disk.
 
 ---
 
-### 9. Sharding & Consistent Hashing
+### 10. Sharding & Consistent Hashing
 
 Sharding distributes key-value pairs across separate server processes using consistent hashing provided by `ShardRouter`.
 
@@ -265,7 +277,7 @@ The router maintains a ring using `std::map<size_t, int>` where `hash_position -
 
 ---
 
-### 10. RouterServer & Networking
+### 11. RouterServer & Networking
 `RouterServer` is the entry point for clients.
 
 **Responsibilities:**
@@ -285,7 +297,7 @@ The router maintains a ring using `std::map<size_t, int>` where `hash_position -
 
 ---
 
-### 11. Automatic Shard Process Management
+### 12. Automatic Shard Process Management
 Rather than manually launching each shard binary, `RouterServer` manages process creation during startup using `fork()` and `execl()`.
 
 Executing:
